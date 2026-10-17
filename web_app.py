@@ -112,6 +112,13 @@ def home():
     )
 
 
+@app.route("/api/index.py")
+@app.route("/api/index.py/")
+def vercel_entrypoint_alias():
+    """Handle deployments that expose the Python function path directly."""
+    return home()
+
+
 @app.route("/project/<project_id>")
 def project_detail(project_id: str):
     project = STORE.get_project(project_id)
