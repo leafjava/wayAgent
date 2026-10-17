@@ -16,3 +16,18 @@ except ImportError:
     pass
 
 from web_app import app  # noqa: E402,F401  Flask app 对象
+
+class _OriginalPathMiddleware:
+    def __init__(self, application):
+        self.application = application
+
+    def __call__(self, environ, start_response):
+        from urllib.parse import parse_qs
+        original = parse_qs(environ.get("QUERY_STRING", "")).get("__path", [None])[0]
+        if original:
+            environ["PATH_INFO"] = original
+            environ["QUERY_STRING"] = "&".join(p for p in environ.get("QUERY_STRING", "").split("&") if not p.startswith("__path="))
+        return self.application(environ, start_response)
+
+
+app.wsgi_app = _OriginalPathMiddleware(app.wsgi_app)
