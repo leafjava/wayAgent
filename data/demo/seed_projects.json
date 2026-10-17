@@ -7,7 +7,33 @@
       "sector": "L1 公链",
       "description": "DemoChain 是面向高并发场景的 EVM 兼容 Layer 1，强调并行执行与高 TPS。代币用于支付 Gas、参与治理、抵押验证。",
       "website": "https://example.invalid",
-      "whitepaper": "https://example.invalid/whitepaper.pdf"
+      "whitepaper": "https://example.invalid/whitepaper.pdf",
+      "category": "crypto",
+      "rwaInfo": {}
+    },
+    {
+      "projectId": "demo-equityx",
+      "name": "EquityX 代币化基金",
+      "symbol": "EQX",
+      "sector": "RWA / 股票代币化",
+      "description": "EquityX 是合规的股票代币化平台代币，每个 EQX 代表 0.001 股某科技公司的股权。代币持有人享有底层股票的分红权和赎回权，受 SEC Reg D 506(c) 监管。",
+      "website": "https://example.invalid/equityx",
+      "whitepaper": "https://example.invalid/equityx-wp.pdf",
+      "category": "rwa_stock",
+      "rwaInfo": {
+        "underlying_asset": "TechCorp Inc. 普通股 (NASDAQ: TECHX)",
+        "custodian": "First Trust Custody (受 SEC 监管)",
+        "regulator": "SEC (美国证券交易委员会)",
+        "regulatory_framework": "Reg D 506(c) / Reg S",
+        "redemption_period_days": 30,
+        "minimum_redemption": "100 EQX",
+        "dividend_frequency": "季度",
+        "audit_firm": "Big Four Auditor (示例)",
+        "last_audit_date": "2026-09-30",
+        "nav_report_url": "https://example.invalid/equityx/nav-q3-2026.pdf",
+        "kyc_required": true,
+        "accredited_only": true
+      }
     }
   ],
   "documents": [
@@ -64,6 +90,51 @@
       "source": "示例社交平台",
       "sourceUrl": "https://example.invalid/community-001",
       "trustLevel": "community"
+    },
+    {
+      "projectId": "demo-equityx",
+      "docType": "whitepaper",
+      "title": "EquityX 白皮书 v1.0",
+      "content": "## 1. 项目概述\n\nEquityX 是合规的股票代币化平台。每个 EQX 代币代表 TechCorp Inc. (NASDAQ: TECHX) 0.001 股的股权。\n\n## 2. 监管框架\n\n本项目根据美国 SEC Reg D 506(c) 发行，仅向合格投资者（Accredited Investor）开放。\nReg S 同步向海外非美投资人开放。\n\n## 3. 托管人\n\n底层股票由 First Trust Custody 托管，托管人受 SEC 与 FINRA 监管，季度独立审计。\n\n## 4. 赎回机制\n\n- 最低赎回：100 EQX（即 0.1 股 TechCorp 普通股）\n- 赎回期：30 个工作日\n- 赎回方式：投资人通过合规券商提交赎回 → 托管人审核 → 底层股票过户 → 代币销毁\n\n## 5. 分红机制\n\n底层股票的现金分红按持币比例自动派发到投资人合规钱包。派息频率：季度。\n\n## 6. KYC / 合规\n\n所有投资人必须在合作的合规券商完成 KYC/AML 验证。TokenTruth 自身不托管资金、不绕过合规。",
+      "source": "internal",
+      "sourceUrl": "https://example.invalid/equityx-wp.pdf",
+      "trustLevel": "official"
+    },
+    {
+      "projectId": "demo-equityx",
+      "docType": "tokenomics",
+      "title": "EQX 代币权利与转让限制",
+      "content": "## 代币权利\n\nEQX 持有人享有：\n- 底层股票分红权（按持币比例）\n- 赎回权（最低 100 EQX，30 个工作日）\n- 治理投票权（部分议案）\n- 信息披露权（季度审计报告、NAV 报告）\n\n## 转让限制\n\n- 仅限合格投资者（Accredited Investor）\n- 转让必须通过合规券商完成（SEC Reg D 506(c) 要求）\n- 锁定期 12 个月（IPO 后可流通）\n- 二级市场流动性可能有限\n\n## 风险\n\n- 监管政策变化风险（SEC 监管框架可能调整）\n- 托管人信用风险\n- 赎回延迟风险\n- 二级市场流动性风险\n- 税务合规风险（不同司法管辖区差异大）",
+      "source": "internal",
+      "sourceUrl": "https://example.invalid/equityx-tokenomics",
+      "trustLevel": "official"
+    },
+    {
+      "projectId": "demo-equityx",
+      "docType": "announcement",
+      "title": "EquityX 2026 Q3 派息公告",
+      "content": "EquityX 宣布 2026 Q3 派息：每 EQX 派发 0.012 美元现金分红（基于 TechCorp 0.012 美元/股分红 × 0.001 股比例）。\n派息日期：2026-10-15。投资人需在合规券商完成 KYC 后方可领取。",
+      "source": "official",
+      "sourceUrl": "https://example.invalid/equityx/q3-2026",
+      "trustLevel": "official"
+    },
+    {
+      "projectId": "demo-equityx",
+      "docType": "nav_audit",
+      "title": "EquityX 2026 Q3 NAV 报告",
+      "content": "## 净资产价值（NAV）报告\n\n- 报告日期：2026-09-30\n- 底层股票数量：5,000,000 股 TechCorp\n- 总 NAV：5,000,000 × 145.30 美元 = 726,500,000 美元\n- 流通代币数量：5,000,000,000 EQX\n- 每 EQX NAV：0.1453 美元\n- 审计机构：Big Four Auditor (示例)\n\n## 风险声明\n\n本报告基于底层资产的市场价格与审计后的托管凭证。\n实际赎回价格可能因市场波动、汇率、托管人处理时间而与 NAV 偏离。",
+      "source": "official",
+      "sourceUrl": "https://example.invalid/equityx/nav-q3-2026.pdf",
+      "trustLevel": "official"
+    },
+    {
+      "projectId": "demo-equityx",
+      "docType": "news",
+      "title": "SEC 加强对股票代币化项目的审查",
+      "content": "据报道，SEC 近期加强对 RWA / 股票代币化项目的审查，要求项目方在 Reg D 506(c) 之外提供更详细的合格投资者验证和持续披露。",
+      "source": "示例加密媒体",
+      "sourceUrl": "https://example.invalid/news-002",
+      "trustLevel": "news"
     }
   ],
   "versions": [

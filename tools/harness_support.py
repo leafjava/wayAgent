@@ -61,6 +61,14 @@ sys.modules["web3.exceptions"] = fake_web3_exceptions
 def load_harness_app(runtime_dir: Path):
     runtime_dir = Path(runtime_dir).resolve()
     runtime_dir.mkdir(parents=True, exist_ok=True)
+    # 加载 .env 让 DEEPSEEK_API_KEY 等生效
+    try:
+        from dotenv import load_dotenv
+        env_path = Path(__file__).resolve().parents[1] / ".env"
+        if env_path.exists():
+            load_dotenv(env_path)
+    except ImportError:
+        pass
     os.environ["TOKENTRUTH_CHAIN_MODE"] = os.environ.get("TOKENTRUTH_CHAIN_MODE", "mock")
     sys.modules.pop("web_app", None)
     import web_app  # type: ignore  # noqa: E402

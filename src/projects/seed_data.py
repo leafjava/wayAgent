@@ -32,7 +32,27 @@ def apply_seed(store: ProjectStore) -> None:
             description=p.get("description", ""),
             website=p.get("website", ""),
             whitepaper=p.get("whitepaper", ""),
+            category=p.get("category", "crypto"),
+            rwaInfo=p.get("rwaInfo", {}),
         ))
+        # RWA 项目：写入 rwa_records 表
+        if p.get("category", "").startswith("rwa") and p.get("rwaInfo"):
+            ri = p["rwaInfo"]
+            store.upsert_rwa_record(
+                project_id=p["projectId"],
+                underlying_asset=ri.get("underlying_asset", ""),
+                custodian=ri.get("custodian", ""),
+                regulator=ri.get("regulator", ""),
+                regulatory_framework=ri.get("regulatory_framework", ""),
+                redemption_period_days=int(ri.get("redemption_period_days", 0) or 0),
+                minimum_redemption=ri.get("minimum_redemption", ""),
+                dividend_frequency=ri.get("dividend_frequency", ""),
+                audit_firm=ri.get("audit_firm", ""),
+                last_audit_date=ri.get("last_audit_date", ""),
+                nav_report_url=ri.get("nav_report_url", ""),
+                kyc_required=bool(ri.get("kyc_required", True)),
+                accredited_only=bool(ri.get("accredited_only", False)),
+            )
     for d in seed.get("documents", []):
         store.add_document(Document(
             docId=d.get("docId", ""),

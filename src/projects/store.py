@@ -38,6 +38,8 @@ class Project:
     description: str
     website: str = ""
     whitepaper: str = ""
+    category: str = "crypto"  # crypto / rwa_stock / rwa_bond / rwa_fund / other
+    rwaInfo: Dict[str, Any] = field(default_factory=dict)  # 股票代币化专属：托管人/底层资产/监管等
     createdAt: int = field(default_factory=_now_ts)
 
 
@@ -143,17 +145,53 @@ class ProjectStore:
                     chain_status TEXT NOT NULL DEFAULT 'pending',
                     tx_hash TEXT
                 );
+                CREATE TABLE IF NOT EXISTS rwa_records (
+                    project_id TEXT PRIMARY KEY,
+                    underlying_asset TEXT NOT NULL,
+                    custodian TEXT,
+                    regulator TEXT,
+                    regulatory_framework TEXT,
+                    redemption_period_days INTEGER,
+                    minimum_redemption TEXT,
+                    dividend_frequency TEXT,
+                    audit_firm TEXT,
+                    last_audit_date TEXT,
+                    nav_report_url TEXT,
+                    kyc_required INTEGER NOT NULL DEFAULT 1,
+                    accredited_only INTEGER NOT NULL DEFAULT 0,
+                    extra_json TEXT,
+                    updated_at INTEGER NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS execution_records (
+                    id TEXT PRIMARY KEY,
+                    consent_id TEXT NOT NULL,
+                    project_id TEXT NOT NULL,
+                    platform TEXT NOT NULL,
+                    action_type TEXT NOT NULL,
+                    amount TEXT,
+                    tx_hash TEXT,
+                    block_explorer TEXT,
+                    status TEXT NOT NULL,
+                    executed_at INTEGER,
+                    user_label TEXT,
+                    evidence_hash TEXT,
+                    created_at INTEGER NOT NULL
+                );
                 """
             )
+            # 迁移：为旧库补充新增列（幂等）
+            self._migrate(c)
 
     # ---------------- Projects ----------------
     def upsert_project(self, project: Project) -> None:
         with self._conn() as c:
             c.execute(
-                """INSERT OR REPLACE INTO projects(project_id,name,symbol,sector,description,website,whitepaper,created_at)
-                   VALUES(?,?,?,?,?,?,?,?)""",
+                """INSERT OR REPLACE INTO projects(project_id,name,symbol,sector,description,website,whitepaper,category,rwa_info_json,created_at)
+                   VALUES(?,?,?,?,?,?,?,?,?,?)""",
                 (project.projectId, project.name, project.symbol, project.sector,
-                 project.description, project.website, project.whitepaper, project.createdAt),
+                 project.description, project.website, project.whitepaper,
+                 project.category, json.dumps(project.rwaInfo, ensure_ascii=False),
+                 project.createdAt),
             )
 
     def list_projects(self) -> List[Dict[str, Any]]:
@@ -308,6 +346,114 @@ class ProjectStore:
                 (tx_hash, status, consent_id),
             )
 
+    # ---------------- RWA Records (股票代币化专属) ----------------
+    def upsert_rwa_record(
+        self,
+        project_id: str,
+        underlying_asset: str,
+        custodian: str = "",
+        regulator: str = "",
+        regulatory_framework: str = "",
+        redemption_period_days: int = 0,
+        minimum_redemption: str = "",
+        dividend_frequency: str = "",
+        audit_firm: str = "",
+        last_audit_date: str = "",
+        nav_report_url: str = "",
+        kyc_required: bool = True,
+        accredited_only: bool = False,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        with self._conn() as c:
+            c.execute(
+                """INSERT OR REPLACE INTO rwa_records(project_id,underlying_asset,custodian,regulator,regulatory_framework,redemption_period_days,minimum_redemption,dividend_frequency,audit_firm,last_audit_date,nav_report_url,kyc_required,accredited_only,extra_json,updated_at)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (project_id, underlying_asset, custodian, regulator, regulatory_framework,
+                 redemption_period_days, minimum_redemption, dividend_frequency,
+                 audit_firm, last_audit_date, nav_report_url,
+                 1 if kyc_required else 0, 1 if accredited_only else 0,
+                 json.dumps(extra or {}, ensure_ascii=False), _now_ts()),
+            )
+
+    def get_rwa_record(self, project_id: str) -> Optional[Dict[str, Any]]:
+        with self._conn() as c:
+            r = c.execute("SELECT * FROM rwa_records WHERE project_id=?", (project_id,)).fetchone()
+        if not r:
+            return None
+        d = dict(r)
+        d["kyc_required"] = bool(d.pop("kyc_required"))
+        d["accredited_only"] = bool(d.pop("accredited_only"))
+        d["extra"] = json.loads(d.pop("extra_json") or "{}")
+        return d
+
+    # ---------------- Execution Records (授权执行的留痕) ----------------
+    def add_execution(
+        self,
+        consent_id: str,
+        project_id: str,
+        platform: str,
+        action_type: str,
+        amount: str = "",
+        user_label: str = "",
+        evidence_hash: str = "",
+        status: str = "pending",
+    ) -> Dict[str, Any]:
+        import uuid
+        eid = uuid.uuid4().hex
+        with self._conn() as c:
+            c.execute(
+                """INSERT INTO execution_records(id,consent_id,project_id,platform,action_type,amount,user_label,evidence_hash,status,created_at)
+                   VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                (eid, consent_id, project_id, platform, action_type, amount, user_label, evidence_hash, status, _now_ts()),
+            )
+        return {
+            "executionId": eid,
+            "consentId": consent_id,
+            "projectId": project_id,
+            "platform": platform,
+            "actionType": action_type,
+            "amount": amount,
+            "status": status,
+            "userLabel": user_label,
+            "evidenceHash": evidence_hash,
+            "createdAt": _now_ts(),
+        }
+
+    def update_execution(self, execution_id: str, tx_hash: str, block_explorer: str, status: str) -> None:
+        with self._conn() as c:
+            c.execute(
+                "UPDATE execution_records SET tx_hash=?, block_explorer=?, status=?, executed_at=? WHERE id=?",
+                (tx_hash, block_explorer, status, _now_ts(), execution_id),
+            )
+
+    def list_executions(self, project_id: Optional[str] = None, consent_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        with self._conn() as c:
+            if consent_id:
+                rows = c.execute(
+                    "SELECT * FROM execution_records WHERE consent_id=? ORDER BY created_at DESC",
+                    (consent_id,),
+                ).fetchall()
+            elif project_id:
+                rows = c.execute(
+                    "SELECT * FROM execution_records WHERE project_id=? ORDER BY created_at DESC",
+                    (project_id,),
+                ).fetchall()
+            else:
+                rows = c.execute("SELECT * FROM execution_records ORDER BY created_at DESC").fetchall()
+        results = []
+        for r in rows:
+            d = dict(r)
+            # snake→camel
+            for old, new in [("consent_id", "consentId"), ("project_id", "projectId"),
+                              ("action_type", "actionType"), ("user_label", "userLabel"),
+                              ("tx_hash", "txHash"), ("block_explorer", "blockExplorer"),
+                              ("executed_at", "executedAt"), ("created_at", "createdAt"),
+                              ("evidence_hash", "evidenceHash")]:
+                if old in d:
+                    d[new] = d.pop(old)
+            results.append(d)
+        return results
+
     # ---------------- Row conversions ----------------
     @staticmethod
     def _row_project(r: sqlite3.Row) -> Dict[str, Any]:
@@ -320,8 +466,20 @@ class ProjectStore:
             "description": d.pop("description") or "",
             "website": d.pop("website") or "",
             "whitepaper": d.pop("whitepaper") or "",
+            "category": d.pop("category", "crypto") if "category" in d else "crypto",
+            "rwaInfo": json.loads(d.pop("rwa_info_json", "{}") or "{}") if "rwa_info_json" in d else {},
             "createdAt": d.pop("created_at"),
         }
+
+    def _migrate(self, c: sqlite3.Connection) -> None:
+        """幂等迁移：给旧库补加新列。"""
+        cur = c.execute("PRAGMA table_info(projects)")
+        cols = {row[1] for row in cur.fetchall()}
+        if "category" not in cols:
+            c.execute("ALTER TABLE projects ADD COLUMN category TEXT DEFAULT 'crypto'")
+        if "rwa_info_json" not in cols:
+            c.execute("ALTER TABLE projects ADD COLUMN rwa_info_json TEXT DEFAULT '{}'")
+        c.commit()
 
     @staticmethod
     def _row_document(r: sqlite3.Row) -> Dict[str, Any]:

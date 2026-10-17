@@ -20,6 +20,13 @@ from typing import Any, Dict, List, Optional
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
+# 自动加载 .env（如果存在）
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
+except ImportError:
+    pass
+
 from flask import Flask, jsonify, render_template, request, redirect, url_for
 
 from src.config_loader import load_config, default_config_path
@@ -28,7 +35,7 @@ from src.projects.seed_data import apply_seed, load_seed_projects
 from src.knowledge.qa_engine import QAEngine
 from src.knowledge.analyzer import Analyzer
 from src.knowledge.llm_client import DeepSeekClient
-from src.tracking.watchlist import WatchlistService, PLATFORMS, InvestmentPlan
+from src.tracking.watchlist import WatchlistService, PLATFORMS, RWA_ACTIONS, find_platform, InvestmentPlan
 from src.company.content_gen import ContentGenerator
 from src.company.version_diff import diff_versions
 from src.risk.status_engine import StatusEngine
@@ -406,9 +413,10 @@ def api_consent():
     platform = str(payload.get("platform", "")).strip()
     action_type = str(payload.get("actionType", "")).strip()
     user_label = str(payload.get("userLabel", "")).strip()
+    amount = str(payload.get("amount", "")).strip()
     if not (project_id and platform and action_type):
         return jsonify({"error": "缺少必要字段"}), 400
-    consent = WATCH.request_execution(project_id, platform, action_type, user_label)
+    consent = WATCH.request_execution(project_id, platform, action_type, user_label, amount)
     # 链上存证
     evidence_id = consent["consentId"]
     evidence_hash = consent["evidenceHash"]
@@ -430,6 +438,107 @@ def api_consent():
         "status": tx.status,
     }
     return jsonify(consent)
+
+
+# ─────────── API：帮客户买代币（用户授权后执行）───────────
+
+
+@app.route("/api/buy", methods=["POST"])
+def api_buy():
+    """帮客户买代币：用户授权后由 TokenTruth 生成执行记录 + 链上存证 + 跳转合规平台。
+
+    仅生成授权记录，不直接执行任何交易；实际买入由第三方合规平台完成。
+    """
+    payload = request.get_json(silent=True) or {}
+    project_id = str(payload.get("projectId", "")).strip()
+    platform = str(payload.get("platform", "")).strip()
+    amount = str(payload.get("amount", "")).strip()
+    user_label = str(payload.get("userLabel", "")).strip()
+    if not (project_id and platform):
+        return jsonify({"error": "缺少 projectId 或 platform"}), 400
+    if not amount:
+        return jsonify({"error": "缺少 amount"}), 400
+
+    project = STORE.get_project(project_id)
+    if not project:
+        return jsonify({"error": "项目不存在"}), 404
+    category = project.get("category", "crypto")
+
+    # RWA 必须用合规平台
+    plat = find_platform(platform)
+    if category.startswith("rwa") and (not plat or plat.get("category") != "rwa"):
+        return jsonify({
+            "error": "RWA / 股票代币化项目必须使用合规券商平台（如 licensed_broker_us / licensed_broker_eu / rwa_marketplace / securities_platform）",
+            "availableRwaPlatforms": [p["id"] for p in PLATFORMS if p["category"] == "rwa"],
+        }), 400
+
+    # 生成 consent + 链上存证
+    consent = WATCH.request_execution(project_id, platform, "buy_rwa" if category.startswith("rwa") else "buy", user_label, amount)
+    evidence_id = consent["consentId"]
+    evidence_hash = consent["evidenceHash"]
+    tx = CHAIN.record_evidence(
+        evidence_hash=evidence_hash,
+        evidence_id=evidence_id,
+        evidence_type=evidence_type_to_int("EXECUTION_CONSENT"),
+        timestamp=_now_ts(),
+        project_id=project_id,
+        doc_version=amount,
+        from_status=status_to_bytes32(""),
+        to_status=status_to_bytes32(""),
+    )
+    WATCH.update_consent_chain(consent["consentId"], tx.tx_hash, tx.status)
+    consent["onChain"] = {
+        "evidenceHash": evidence_hash,
+        "txHash": tx.tx_hash,
+        "blockNumber": tx.block_number,
+        "status": tx.status,
+    }
+
+    # 在第三方平台"完成"后回填执行记录（mock 模式立即成功）
+    execution = WATCH.record_execution(
+        consent_id=consent["consentId"],
+        project_id=project_id,
+        platform=platform,
+        action_type=consent.get("actionType") or "buy_rwa",
+        amount=amount,
+        user_label=user_label,
+        evidence_hash=evidence_hash,
+        status="dispatched",
+    )
+    WATCH.store.update_execution(
+        execution["executionId"],
+        tx_hash=tx.tx_hash,
+        block_explorer=f"https://testnet.monadexplorer.com/tx/{tx.tx_hash}",
+        status="dispatched",
+    )
+
+    return jsonify({
+        "consent": consent,
+        "execution": execution,
+        "redirectUrl": consent["redirectUrl"],
+        "disclaimer": (
+            "TokenTruth 仅生成授权记录与链上存证；"
+            "实际买入在第三方合规平台完成，请在该平台完成 KYC 后再继续。"
+            if category.startswith("rwa") else
+            "TokenTruth 仅生成授权记录与链上存证；实际买入由第三方平台完成。"
+        ),
+    })
+
+
+@app.route("/api/executions", methods=["GET"])
+def api_executions_list():
+    """查询执行记录。"""
+    project_id = request.args.get("projectId")
+    consent_id = request.args.get("consentId")
+    return jsonify({"executions": WATCH.store.list_executions(project_id=project_id, consent_id=consent_id)})
+
+
+@app.route("/api/platforms", methods=["GET"])
+def api_platforms():
+    return jsonify({
+        "platforms": PLATFORMS,
+        "rwaActions": sorted(RWA_ACTIONS),
+    })
 
 
 @app.route("/api/consent", methods=["GET"])

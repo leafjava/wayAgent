@@ -1,4 +1,31 @@
 // 跟踪与执行交互
+async function loadPlatforms() {
+  try {
+    const r = await fetch('/api/platforms');
+    const d = await r.json();
+    const select = document.getElementById('execPlatform');
+    select.innerHTML = d.platforms.map(p => `<option value="${p.id}" data-category="${p.category}">${p.name}${p.requiresKyc ? ' 🔒KYC' : ''}</option>`).join('');
+    filterPlatforms();
+  } catch (e) { /* ignore */ }
+}
+
+function filterPlatforms() {
+  const sel = document.getElementById('execPlatform');
+  if (!sel) return;
+  const projectSel = document.getElementById('execProjectId');
+  const isRwa = projectSel && projectSel.value === 'demo-equityx';
+  Array.from(sel.options).forEach(opt => {
+    if (isRwa) {
+      opt.disabled = opt.dataset.category !== 'rwa';
+    } else {
+      opt.disabled = opt.dataset.category === 'rwa';
+    }
+  });
+}
+
+document.getElementById('execProjectId').addEventListener('change', filterPlatforms);
+loadPlatforms();
+
 async function loadWatch() {
   const r = await fetch('/api/watchlist');
   const d = await r.json();
@@ -9,7 +36,7 @@ async function loadWatch() {
   }
   list.innerHTML = d.items.map(it => `
     <li class="flex items-center justify-between bg-slate-800/50 rounded px-2 py-1">
-      <span>${it.projectId} ${it.note ? '· ' + it.note : ''}</span>
+      <span>${it.project_id} ${it.note ? '· ' + it.note : ''}</span>
       <button data-id="${it.id}" class="removeBtn text-rose-400 hover:text-rose-300 text-xs">移除</button>
     </li>
   `).join('');
@@ -46,43 +73,59 @@ document.getElementById('savePlanBtn').addEventListener('click', async () => {
   alert(`计划已保存：${d.planId.slice(0, 12)}…\n预算 ${d.budget} · 风险偏好 ${d.riskPreference} · 跟踪 ${d.trackingFrequency}`);
 });
 
-async function loadConsents() {
-  const r = await fetch('/api/consent');
+async function loadExecutions() {
+  const r = await fetch('/api/executions');
   const d = await r.json();
-  const list = document.getElementById('consentList');
-  if (!d.consents || d.consents.length === 0) {
-    list.innerHTML = '<li class="text-slate-500">暂无授权记录。</li>';
+  const list = document.getElementById('executionList');
+  if (!d.executions || d.executions.length === 0) {
+    list.innerHTML = '<li class="text-slate-500">暂无执行记录。</li>';
     return;
   }
-  list.innerHTML = d.consents.map(c => `
+  list.innerHTML = d.executions.map(c => `
     <li class="bg-slate-800/50 rounded px-2 py-1">
       <div class="flex items-center justify-between">
-        <span>${c.project_id} · ${c.platform} · ${c.action_type}</span>
-        <span class="text-[10px] text-slate-500">${new Date(c.created_at*1000).toLocaleTimeString()}</span>
+        <span>${c.projectId} · ${c.platform} · ${c.actionType} · ${c.amount || ''}</span>
+        <span class="text-[10px] text-slate-500">${new Date(c.createdAt*1000).toLocaleTimeString()}</span>
       </div>
-      <div class="text-[10px] font-mono text-slate-500 break-all">tx: ${c.tx_hash || '-'}</div>
-      <div class="text-[10px] text-slate-400">${c.chain_status}</div>
-      <a href="${c.redirectUrl}" target="_blank" class="text-indigo-300 hover:underline text-[10px]">跳转 ${c.platform} →</a>
+      <div class="text-[10px] font-mono text-slate-500 break-all">tx: ${c.txHash || '-'}</div>
+      <div class="text-[10px] text-slate-400">status: ${c.status}</div>
+      ${c.blockExplorer ? `<a href="${c.blockExplorer}" target="_blank" class="text-indigo-300 hover:underline text-[10px]">链上查询 →</a>` : ''}
     </li>
   `).join('');
 }
 
-document.getElementById('execBtn').addEventListener('click', async () => {
-  const projectId = document.getElementById('execProjectId').value.trim();
+document.getElementById('buyBtn').addEventListener('click', async () => {
+  const projectId = document.getElementById('execProjectId').value;
   const platform = document.getElementById('execPlatform').value;
-  const actionType = document.getElementById('execAction').value;
-  if (!projectId) { alert('请输入 projectId'); return; }
-  const r = await fetch('/api/consent', {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ projectId, platform, actionType, userLabel: 'demo-user' })
-  });
-  const d = await r.json();
-  loadConsents();
-  if (d.onChain) {
-    alert(`已生成授权记录 + 上链\ntx: ${d.onChain.txHash.slice(0,18)}…\n即将跳转 ${platform}`);
-    if (d.redirectUrl) window.open(d.redirectUrl, '_blank');
+  const amount = document.getElementById('execAmount').value.trim();
+  if (!amount) { alert('请输入数量'); return; }
+  const result = document.getElementById('buyResult');
+  result.textContent = '提交中…';
+  try {
+    const r = await fetch('/api/buy', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ projectId, platform, amount, userLabel: 'demo-user' })
+    });
+    const d = await r.json();
+    if (d.error) {
+      result.innerHTML = `<div class="text-rose-400">${d.error}</div>`;
+      return;
+    }
+    const oc = d.consent.onChain || {};
+    result.innerHTML = `
+      <div class="bg-emerald-900/20 border border-emerald-800/40 rounded p-3 mt-2">
+        <div class="text-emerald-300 font-semibold text-sm">✓ 授权记录已生成</div>
+        <div class="text-xs text-slate-400 mt-1">${d.disclaimer}</div>
+        <div class="font-mono text-[10px] text-slate-500 break-all mt-1">execution: ${d.execution.executionId}</div>
+        <div class="font-mono text-[10px] text-slate-500 break-all">tx: ${oc.txHash || '-'}</div>
+        <a href="${d.redirectUrl}" target="_blank" class="mt-1 inline-block text-indigo-300 hover:underline text-xs">跳转 ${platform} →</a>
+      </div>
+    `;
+    loadExecutions();
+  } catch (e) {
+    result.innerHTML = `<div class="text-rose-400">失败：${e}</div>`;
   }
 });
 
 loadWatch();
-loadConsents();
+loadExecutions();

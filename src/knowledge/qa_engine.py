@@ -66,6 +66,13 @@ INTENT_RULES: List[Tuple[str, List[str], str]] = [
     ("competitor", ["竞品", "competitor", "对比", "类似", "compete"], "competitor"),
     ("update", ["更新", "修改", "update", "change", "新增", "删除", "新版本"], "update"),
     ("community", ["社区", "community", "Twitter", "Discord", "Telegram", "推特"], "community"),
+    # RWA / 股票代币化
+    ("stock_tokenization", ["股票代币", "代币化", "stock token", "tokenization", "RWA", "rwa", "资产上链", "证券代币"], "stock_tokenization"),
+    ("underlying_asset", ["底层资产", "underlying", "标的", "真实资产", "资产支持", "储备", "custody", "托管"], "underlying_asset"),
+    ("redemption", ["赎回", "redeem", "兑换", "底层赎回", "退出", "退出机制"], "redemption"),
+    ("dividend_rights", ["分红", "dividend", "派息", "票息", "coupon", "利息", "收益分配"], "dividend_rights"),
+    ("kyc_compliance", ["KYC", "kyc", "AML", "合规", "合规审核", "受监管", "监管", "regulator", "SEC", "MiFID", "认证投资者"], "kyc_compliance"),
+    ("nav_audit", ["NAV", "净值", "审计", "audit", "审计报告", "持仓报告", "财务报表"], "nav_audit"),
 ]
 
 
@@ -116,6 +123,13 @@ class QAEngine:
             "competitor": ["announcement", "whitepaper"],
             "update": ["whitepaper", "tokenomics", "announcement"],
             "community": ["community", "news"],
+            # RWA 偏好
+            "stock_tokenization": ["whitepaper", "tokenomics", "announcement"],
+            "underlying_asset": ["whitepaper", "announcement"],
+            "redemption": ["tokenomics", "whitepaper", "announcement"],
+            "dividend_rights": ["tokenomics", "announcement", "whitepaper"],
+            "kyc_compliance": ["whitepaper", "announcement", "tokenomics"],
+            "nav_audit": ["announcement", "whitepaper"],
         }
         pref_types = intent_pref.get(intent, [])
 
@@ -223,6 +237,148 @@ class QAEngine:
                 "我买的代币有什么权利？",
                 "未来一年有哪些解锁？",
                 "这个项目当前最大的风险是什么？",
+                "底层资产由谁托管？",
+                "分红派息机制是什么？",
+            ],
+        )
+
+    # -------- RWA / 股票代币化 专属回答模板 --------
+
+    def _answer_stock_tokenization(self, project_id: str, project: Dict[str, Any], citations: List[Citation]) -> Answer:
+        cat = project.get("category", "crypto")
+        if cat != "rwa_stock":
+            return self._answer_general(project_id, project, citations)
+        rwa = project.get("rwaInfo", {}) or {}
+        conclusion = (
+            f"{project['name']}（{project['symbol']}）是 {rwa.get('underlying_asset', '股票')} 的代币化项目。"
+            f"底层资产由 {rwa.get('custodian', '待披露')} 托管，受 {rwa.get('regulator', '待披露')} 监管。"
+            f"代币持有者享有底层资产的分红权和赎回权（参见引用资料）。"
+        )
+        risks = [
+            "股票代币化项目受所在司法管辖区严格监管，投资人需满足 KYC/AML 与合格投资者要求；",
+            "底层资产的真实性与托管人风险是关键；请查阅最新审计报告与 NAV 报告；",
+            "代币价格可能与底层资产净值（NAV）偏离；二级市场流动性受限于合规平台。",
+        ]
+        return Answer(
+            question="", conclusion=conclusion, citations=citations,
+            confidence="high" if citations and citations[0].trustLevel == "official" else "medium",
+            risks=risks,
+            reasoning="检索股票代币化相关资料（白皮书、代币经济、公告），结合项目 RWA 元信息。",
+            suggestedFollowups=[
+                "底层资产由谁托管？",
+                "分红派息机制是什么？",
+                "如何赎回底层资产？",
+                "KYC / 合规要求是什么？",
+            ],
+        )
+
+    def _answer_underlying_asset(self, project_id: str, project: Dict[str, Any], citations: List[Citation]) -> Answer:
+        rwa = project.get("rwaInfo", {}) or {}
+        conclusion = (
+            f"底层资产：{rwa.get('underlying_asset', '项目资料中未提及')}\n"
+            f"托管人：{rwa.get('custodian', '项目资料中未提及')}\n"
+            f"监管机构：{rwa.get('regulator', '项目资料中未提及')}\n"
+            f"监管框架：{rwa.get('regulatory_framework', '项目资料中未提及')}\n"
+            f"审计机构：{rwa.get('audit_firm', '项目资料中未提及')}（最近一次：{rwa.get('last_audit_date', '项目资料中未提及')}）"
+        )
+        risks = [
+            "底层资产的信息以最新审计报告与官方公告为准；",
+            "托管人违约或破产可能导致代币无法赎回；请关注托管人信用评级与监管动态。",
+        ]
+        return Answer(
+            question="", conclusion=conclusion, citations=citations,
+            confidence="high" if rwa.get("underlying_asset") else "low",
+            risks=risks,
+            reasoning="从项目 RWA 元数据 + 白皮书/公告/代币经济资料综合提取。",
+            suggestedFollowups=[
+                "如何赎回底层资产？",
+                "审计由谁做？",
+                "NAV 报告在哪里？",
+            ],
+        )
+
+    def _answer_redemption(self, project_id: str, project: Dict[str, Any], citations: List[Citation]) -> Answer:
+        rwa = project.get("rwaInfo", {}) or {}
+        period = rwa.get("redemption_period_days", "项目资料中未提及")
+        minimum = rwa.get("minimum_redemption", "项目资料中未提及")
+        conclusion = (
+            f"赎回机制：\n"
+            f"• 赎回期：{period} 天\n"
+            f"• 最低赎回额：{minimum}\n"
+            f"• 赎回路径：投资人通过合规平台提交赎回申请 → 托管人审核 → 底层资产交割 → 代币销毁。\n"
+            f"实际赎回速度与门槛以项目方最新公告与代币合约代码为准。"
+        )
+        risks = [
+            "赎回期可能因监管要求、托管人处理时间或市场流动性而延长；",
+            "二级市场转让可能快于赎回，但价格可能与 NAV 偏离；",
+            "小额赎回可能受最低赎回额限制。",
+        ]
+        return Answer(
+            question="", conclusion=conclusion, citations=citations,
+            confidence="medium",
+            risks=risks,
+            reasoning="从 RWA 元数据 + 代币经济 / 公告中提取赎回机制。",
+            suggestedFollowups=[
+                "底层资产由谁托管？",
+                "分红派息机制是什么？",
+                "KYC / 合规要求是什么？",
+            ],
+        )
+
+    def _answer_dividend(self, project_id: str, project: Dict[str, Any], citations: List[Citation]) -> Answer:
+        rwa = project.get("rwaInfo", {}) or {}
+        freq = rwa.get("dividend_frequency", "项目资料中未提及")
+        conclusion = (
+            f"分红派息机制：\n"
+            f"• 派息频率：{freq}\n"
+            f"• 派息来源：底层资产的现金分红 / 票息\n"
+            f"• 派息方式：通常按持币比例自动派发到投资人钱包（需 KYC/合规）\n"
+            f"具体派息记录、累计金额与税务处理请参考项目方公告与最新审计报告。"
+        )
+        risks = [
+            "代币持有人在派息时必须满足 KYC / 合规要求，否则可能无法领取；",
+            "派息并非保证，取决于底层资产现金流；",
+            "派息可能被视为应税事件，请咨询当地税务顾问（TokenTruth 不提供税务建议）。",
+        ]
+        return Answer(
+            question="", conclusion=conclusion, citations=citations,
+            confidence="medium",
+            risks=risks,
+            reasoning="从 RWA 元数据 + 代币经济 / 公告中提取派息机制。",
+            suggestedFollowups=[
+                "底层资产由谁托管？",
+                "如何赎回底层资产？",
+                "如何帮客户买代币？",
+            ],
+        )
+
+    def _answer_kyc(self, project_id: str, project: Dict[str, Any], citations: List[Citation]) -> Answer:
+        rwa = project.get("rwaInfo", {}) or {}
+        kyc = rwa.get("kyc_required", True)
+        accredited = rwa.get("accredited_only", False)
+        conclusion = (
+            f"KYC / 合规要求：\n"
+            f"• KYC 必须：{'是' if kyc else '否'}\n"
+            f"• 仅限合格投资者：{'是' if accredited else '否'}\n"
+            f"• 监管机构：{rwa.get('regulator', '项目资料中未提及')}\n"
+            f"• 监管框架：{rwa.get('regulatory_framework', '项目资料中未提及')}\n\n"
+            f"投资人需在合规平台完成身份验证（KYC）与反洗钱（AML）检查；"
+            f"部分项目可能要求合格投资者资质（accredited investor）。"
+            f"TokenTruth 自身不托管资金、不绕过合规——所有执行都通过受监管的第三方平台完成。"
+        )
+        risks = [
+            "未通过 KYC/AML 的投资人将无法买入或赎回；",
+            "不同司法管辖区的合规要求可能不同；",
+            "TokenTruth 仅生成授权记录与链上存证，不直接执行任何交易。",
+        ]
+        return Answer(
+            question="", conclusion=conclusion, citations=citations,
+            confidence="high" if kyc else "medium",
+            risks=risks,
+            reasoning="从 RWA 元数据 + 白皮书 / 公告中提取合规要求。",
+            suggestedFollowups=[
+                "如何赎回底层资产？",
+                "如何帮客户买代币？",
             ],
         )
 
@@ -369,6 +525,13 @@ class QAEngine:
             "unlock_schedule": self._answer_unlock,
             "risk": self._answer_risk,
             "general": self._answer_general,
+            # RWA
+            "stock_tokenization": self._answer_stock_tokenization,
+            "underlying_asset": self._answer_underlying_asset,
+            "redemption": self._answer_redemption,
+            "dividend_rights": self._answer_dividend,
+            "kyc_compliance": self._answer_kyc,
+            "nav_audit": self._answer_underlying_asset,
         }
         if primary_intent not in handlers:
             primary_intent = "general"
