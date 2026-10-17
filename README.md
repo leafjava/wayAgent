@@ -23,6 +23,29 @@ TokenTruth 是一个**双边平台**：
 | 📈 **跟踪执行** | 关注列表 + 投资计划 + 用户授权后对接平台 |
 | 📢 **项目方后台** | 资料版本管理 + 6 类内容模板自动生成 + 投资者问答 |
 
+## AI 引擎：DeepSeek 接入
+
+`/chat` 页面默认调用本地关键词引擎，**配置 DeepSeek API key 后自动切换为 LLM 模式**：
+
+```powershell
+# 编辑 .env（不是 .env.example）
+notepad .env
+
+# 加入：
+DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+DEEPSEEK_MODEL=deepseek-chat
+DEEPSEEK_TIMEOUT=20
+```
+
+LLM 模式工作流：
+
+1. 检索项目资料中 top-5 上下文（按可信度 + 关键词打分）
+2. 拼装 system prompt（"只基于项目资料回答，每条结论带 [N] 引用"）
+3. DeepSeek 返回严格 JSON：`{conclusion, reasoning, citationIndexes, risks, confidence, followups}`
+4. 把 `[N]` 索引映射回原始引用，6 字段结构化返回
+5. **失败兜底**：网络/限流时自动降级到本地模板引擎
+
 ## 6 种链上存证场景
 
 每次存证都写到 Monad：
@@ -73,7 +96,7 @@ $env:PRIVATE_KEY = "0x..."
 $env:MONAD_RPC = "https://testnet-rpc.monad.xyz"
 $env:MONAD_CHAIN_ID = "10143"
 $env:TOKENTRUTH_CHAIN_MODE = "live"
-pip install py-solc-x web3 eth-account
+pip install py-solc-x web3 eth-account requests
 npm run chain:deploy
 $env:DISCLOSURE_REGISTRY_ADDRESS = "0x..."
 npm run dev

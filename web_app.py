@@ -27,6 +27,7 @@ from src.projects.store import ProjectStore, Project, Document, Version, hash_pr
 from src.projects.seed_data import apply_seed, load_seed_projects
 from src.knowledge.qa_engine import QAEngine
 from src.knowledge.analyzer import Analyzer
+from src.knowledge.llm_client import DeepSeekClient
 from src.tracking.watchlist import WatchlistService, PLATFORMS, InvestmentPlan
 from src.company.content_gen import ContentGenerator
 from src.company.version_diff import diff_versions
@@ -43,19 +44,23 @@ DB_PATH = ROOT / "data" / "runtime" / "tokentruth.sqlite3"
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 STORE = ProjectStore(str(DB_PATH))
-QA = QAEngine(STORE)
+LLM = DeepSeekClient()  # 自动读取 DEEPSEEK_API_KEY / BASE_URL / MODEL
+QA = QAEngine(STORE, llm_client=LLM)
 ANALYZER = Analyzer(STORE)
 WATCH = WatchlistService(STORE)
 GEN = ContentGenerator(STORE)
 RISK = StatusEngine(STORE)
 CHAIN, CONTRACT_ADDRESS = build_registry()
 CHAIN_MODE = type(CHAIN).__name__
+LLM_ENABLED = LLM.enabled
+LLM_MODEL = LLM.model
 
 
 # 首次启动时灌入 seed
 if not STORE.list_projects():
     apply_seed(STORE)
     log.info("已灌入 demo seed 项目")
+log.info("LLM 状态：%s (model=%s)", "启用" if LLM_ENABLED else "降级到本地引擎", LLM_MODEL)
 
 
 # --------------------------------------------------------------------------- #
@@ -215,9 +220,10 @@ def api_qa():
     payload = request.get_json(silent=True) or {}
     project_id = str(payload.get("projectId", "")).strip()
     question = str(payload.get("question", "")).strip()
+    prefer_llm = bool(payload.get("preferLlm", True))
     if not project_id or not question:
         return jsonify({"error": "缺少 projectId 或 question"}), 400
-    ans = QA.ask(project_id, question)
+    ans = QA.ask(project_id, question, prefer_llm=prefer_llm)
     # 触发链上存证（可选：研究问答作为 INVESTOR_QA 类型）
     if payload.get("anchorOnChain", False):
         evidence_id = uuid.uuid4().hex
@@ -267,7 +273,6 @@ def api_qa():
             },
         }
         return jsonify(result)
-    # 默认不上链
     return jsonify({
         "question": ans.question,
         "conclusion": ans.conclusion,
@@ -275,6 +280,8 @@ def api_qa():
         "risks": ans.risks,
         "reasoning": ans.reasoning,
         "suggestedFollowups": ans.suggestedFollowups,
+        "llmUsed": LLM_ENABLED and prefer_llm,
+        "llmModel": LLM_MODEL if LLM_ENABLED else None,
         "citations": [
             {
                 "docId": c.docId, "docType": c.docType, "title": c.title,
@@ -282,6 +289,18 @@ def api_qa():
                 "sourceUrl": c.sourceUrl, "excerpt": c.excerpt, "version": c.version,
             } for c in ans.citations
         ],
+    })
+
+
+# ─────────── API：LLM 状态 ───────────
+
+
+@app.route("/api/llm/status", methods=["GET"])
+def api_llm_status():
+    return jsonify({
+        "enabled": LLM_ENABLED,
+        "model": LLM_MODEL,
+        "baseUrl": LLM.base_url,
     })
 
 

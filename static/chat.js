@@ -3,6 +3,8 @@ const projectSelect = document.getElementById('projectSelect');
 const questionInput = document.getElementById('questionInput');
 const askBtn = document.getElementById('askBtn');
 const anchorCheck = document.getElementById('anchorCheck');
+const preferLlmCheck = document.getElementById('preferLlmCheck');
+const llmBadge = document.getElementById('llmBadge');
 const answerArea = document.getElementById('answerArea');
 
 projectSelect.addEventListener('change', () => {
@@ -21,17 +23,34 @@ document.querySelectorAll('.suggestedBtn').forEach(b => {
 askBtn.addEventListener('click', ask);
 questionInput.addEventListener('keypress', e => { if (e.key === 'Enter') ask(); });
 
+// LLM 状态
+async function refreshLlmStatus() {
+  try {
+    const r = await fetch('/api/llm/status');
+    const d = await r.json();
+    if (d.enabled) {
+      llmBadge.textContent = 'LLM: ' + d.model;
+      llmBadge.className = 'text-[10px] px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-300 border border-emerald-800/40';
+    } else {
+      llmBadge.textContent = 'LLM: 本地引擎';
+      llmBadge.className = 'text-[10px] px-2 py-0.5 rounded bg-amber-900/30 text-amber-300 border border-amber-800/40';
+    }
+  } catch (e) { /* ignore */ }
+}
+refreshLlmStatus();
+
 async function ask() {
   const q = questionInput.value.trim();
   if (!q) return;
   const projectId = projectSelect.value;
   const anchor = anchorCheck.checked;
+  const preferLlm = preferLlmCheck.checked;
   askBtn.disabled = true;
   askBtn.textContent = '生成中…';
   try {
     const r = await fetch('/api/qa', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ projectId, question: q, anchorOnChain: anchor })
+      body: JSON.stringify({ projectId, question: q, anchorOnChain: anchor, preferLlm })
     });
     const d = await r.json();
     renderAnswer(d, anchor);
@@ -56,6 +75,7 @@ function renderAnswer(d, anchored) {
       <a href="/proof?hash=${d.onChain.evidenceHash}" class="mt-1 inline-block text-indigo-300 hover:underline">→ 验证</a>
     </div>
   ` : '';
+  const llmTag = d.llmUsed ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-300">LLM ${d.llmModel || ''}</span>` : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/30 text-amber-300">本地引擎</span>`;
   const citationsHtml = (d.citations || []).map(c => {
     const color = TRUST_COLOR[c.trustLevel] || '#94a3b8';
     return `
@@ -75,6 +95,7 @@ function renderAnswer(d, anchored) {
       <div class="text-slate-500 text-xs">Q · ${d.question}</div>
       <div class="mt-2 flex items-center gap-2 text-xs">
         <span class="px-2 py-0.5 rounded" style="background: ${confColor}33; color: ${confColor}">置信度 ${CONFIDENCE_LABEL[d.confidence] || d.confidence}</span>
+        ${llmTag}
       </div>
       <div class="mt-3 text-slate-100 text-sm whitespace-pre-wrap leading-relaxed">${d.conclusion}</div>
       <div class="mt-3 text-xs text-slate-500"><b>推理：</b>${d.reasoning || ''}</div>

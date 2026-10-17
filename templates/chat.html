@@ -11,6 +11,8 @@
       {% for p in projects %}<option value="{{ p.projectId }}" {% if p.projectId == project_id %}selected{% endif %}>{{ p.name }} (${{ p.symbol }})</option>{% endfor %}
     </select>
     <label class="text-xs text-slate-400 flex items-center gap-1"><input id="anchorCheck" type="checkbox" class="accent-indigo-500"> 上链存证</label>
+    <label class="text-xs text-slate-400 flex items-center gap-1"><input id="preferLlmCheck" type="checkbox" checked class="accent-indigo-500"> 启用 LLM</label>
+    <span id="llmBadge" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-500">LLM: 检测中…</span>
   </div>
 
   <div class="mt-4 bg-slate-900/70 border border-slate-800 rounded-2xl p-4">

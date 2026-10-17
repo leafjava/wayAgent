@@ -1,16 +1,33 @@
-"""自然语言问答引擎（确定性 / 关键词检索）。
+"""自然语言问答引擎。
 
-MVP 不接真实 LLM，用关键词检索 + 模板化回答保证 100% 可复现。
-真实部署可替换为 LLM，但回答结构（结论/引用/时间/可信度/原文/风险）保持一致。
+MVP 模式（无 LLM key）：关键词检索 + 模板化回答，100% 可复现；
+LLM 模式（DeepSeek key 已配置）：检索 top-5 资料作为 context，调 LLM 生成 JSON 答案；
+LLM 失败时自动降级到本地模板。
 """
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..projects.store import ProjectStore
+
+log = logging.getLogger(__name__)
+
+# 类型前向引用：避免循环 import
+try:
+    from .llm_client import (
+        DeepSeekClient, LLMResponse,
+        build_qa_messages, parse_json_response, citation_indexes_to_docs,
+    )
+except ImportError:  # pragma: no cover
+    DeepSeekClient = None  # type: ignore
+    LLMResponse = None  # type: ignore
+    build_qa_messages = None  # type: ignore
+    parse_json_response = None  # type: ignore
+    citation_indexes_to_docs = None  # type: ignore
 
 
 @dataclass
@@ -53,10 +70,15 @@ INTENT_RULES: List[Tuple[str, List[str], str]] = [
 
 
 class QAEngine:
-    """根据用户问题检索项目资料并生成结构化答案。"""
+    """根据用户问题检索项目资料并生成结构化答案。
 
-    def __init__(self, store: ProjectStore) -> None:
+    - LLM 模式（DeepSeek key 已配置）：检索 top-5 资料作为 context，调 LLM 生成 JSON 答案
+    - 本地模式（无 key 或 LLM 失败）：按意图模板 + 关键词匹配，100% 可复现
+    """
+
+    def __init__(self, store: ProjectStore, llm_client: Optional["DeepSeekClient"] = None) -> None:
         self.store = store
+        self.llm = llm_client  # type: ignore[name-defined]
 
     def _detect_intent(self, question: str) -> List[str]:
         q = question.lower()
@@ -114,25 +136,6 @@ class QAEngine:
                 scored.append((score, d, v))
         scored.sort(key=lambda x: -x[0])
         return scored[:5]  # top 5
-
-    def _build_citations(self, scored: List[Tuple[float, Dict[str, Any], Dict[str, Any]]]) -> List[Citation]:
-        out: List[Citation] = []
-        for score, d, v in scored:
-            # 摘录 200 字
-            excerpt = v["content"][:200].replace("\n", " ").strip()
-            if len(v["content"]) > 200:
-                excerpt += "..."
-            out.append(Citation(
-                docId=d["docId"],
-                docType=d["docType"],
-                title=d["title"],
-                trustLevel=d["trustLevel"],
-                source=d["source"],
-                sourceUrl=d["sourceUrl"],
-                excerpt=excerpt,
-                version=v["version"],
-            ))
-        return out
 
     def _answer_revenue(self, project_id: str, project: Dict[str, Any], citations: List[Citation]) -> Answer:
         conclusion = f"{project['name']}（{project['symbol']}）的收入来源主要在白皮书与公告中披露。详见引用资料。"
@@ -223,18 +226,43 @@ class QAEngine:
             ],
         )
 
-    def ask(self, project_id: str, question: str) -> Answer:
+    def ask(
+        self,
+        project_id: str,
+        question: str,
+        prefer_llm: bool = True,
+    ) -> Answer:
         project = self.store.get_project(project_id)
         if not project:
             return Answer(
                 question=question, conclusion=f"未找到项目 {project_id}",
                 confidence="low", risks=["项目不存在或已被删除"],
             )
-        intents = self._detect_intent(question)
-        primary_intent = intents[0]
 
-        # 收集所有意图的相关引用
-        all_scored = []
+        # 1) 先按本地检索拿 top 上下文（始终需要，供 LLM 使用 + 失败时直接出）
+        contexts, citations = self._retrieve_contexts(project_id, question)
+
+        # 2) 优先尝试 LLM
+        if prefer_llm and self.llm and self.llm.enabled and contexts:
+            try:
+                return self._ask_with_llm(project, question, contexts, citations)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("LLM 回答失败，降级到本地引擎：%s", exc)
+
+        # 3) 降级到本地模板
+        return self._ask_with_template(project_id, question, contexts, citations)
+
+    # ------------------------------------------------------------------ #
+    # 检索
+    # ------------------------------------------------------------------ #
+
+    def _retrieve_contexts(
+        self, project_id: str, question: str
+    ) -> Tuple[List[Dict[str, Any]], List[Citation]]:
+        """按意图 + 关键词双路匹配，返回 (context_dicts, citations)。"""
+        intents = self._detect_intent(question)
+
+        all_scored: List[Tuple[float, Dict[str, Any], Dict[str, Any]]] = []
         seen = set()
         for intent in intents:
             for score, d, v in self._find_relevant_docs(project_id, intent, question):
@@ -244,8 +272,96 @@ class QAEngine:
                 seen.add(key)
                 all_scored.append((score, d, v))
         all_scored.sort(key=lambda x: -x[0])
-        citations = self._build_citations(all_scored[:5])
 
+        contexts: List[Dict[str, Any]] = []
+        citations: List[Citation] = []
+        for score, d, v in all_scored[:5]:
+            content = v["content"]
+            excerpt = content[:200].replace("\n", " ").strip()
+            if len(content) > 200:
+                excerpt += "..."
+            contexts.append({
+                "docId": d["docId"],
+                "docType": d["docType"],
+                "title": d["title"],
+                "trustLevel": d["trustLevel"],
+                "source": d["source"],
+                "sourceUrl": d["sourceUrl"],
+                "version": v["version"],
+                "excerpt": excerpt,
+                "content": content[:4000],  # 喂给 LLM 的完整内容
+            })
+            citations.append(Citation(
+                docId=d["docId"],
+                docType=d["docType"],
+                title=d["title"],
+                trustLevel=d["trustLevel"],
+                source=d["source"],
+                sourceUrl=d["sourceUrl"],
+                excerpt=excerpt,
+                version=v["version"],
+            ))
+        return contexts, citations
+
+    # ------------------------------------------------------------------ #
+    # LLM 回答
+    # ------------------------------------------------------------------ #
+
+    def _ask_with_llm(
+        self,
+        project: Dict[str, Any],
+        question: str,
+        contexts: List[Dict[str, Any]],
+        citations: List[Citation],
+    ) -> Answer:
+        messages = build_qa_messages(project, question, contexts)
+        resp = self.llm.chat(
+            messages,
+            temperature=0.2,
+            max_tokens=800,
+            response_format={"type": "json_object"},
+        )
+        data = parse_json_response(resp.text)
+        if not data:
+            raise RuntimeError(f"LLM 输出无法解析为 JSON：{resp.text[:200]}")
+        # 映射 citation index → 完整引用
+        used_indexes = data.get("citationIndexes") or []
+        used_citations = citation_indexes_to_docs(used_indexes, contexts)
+        if used_citations:
+            # 把 used_citations 转 Citation
+            used = [
+                Citation(
+                    docId=c["docId"], docType=c["docType"], title=c["title"],
+                    trustLevel=c["trustLevel"], source=c["source"],
+                    sourceUrl=c["sourceUrl"], excerpt=c["excerpt"], version=c["version"],
+                ) for c in used_citations
+            ]
+        else:
+            used = citations  # LLM 没给索引就用全部
+        return Answer(
+            question=question,
+            conclusion=str(data.get("conclusion", "")).strip(),
+            citations=used,
+            confidence=str(data.get("confidence", "medium")).lower(),
+            risks=list(data.get("risks") or []),
+            reasoning=str(data.get("reasoning", "")).strip(),
+            suggestedFollowups=list(data.get("followups") or []),
+        )
+
+    # ------------------------------------------------------------------ #
+    # 本地模板（确定性）
+    # ------------------------------------------------------------------ #
+
+    def _ask_with_template(
+        self,
+        project_id: str,
+        question: str,
+        contexts: List[Dict[str, Any]],
+        citations: List[Citation],
+    ) -> Answer:
+        intents = self._detect_intent(question)
+        primary_intent = intents[0] if intents else "general"
+        project = self.store.get_project(project_id) or {}
         handlers = {
             "revenue": self._answer_revenue,
             "token_rights": self._answer_token_rights,
@@ -254,7 +370,6 @@ class QAEngine:
             "risk": self._answer_risk,
             "general": self._answer_general,
         }
-        # 如果没有匹配到具体意图，遍历所有 intents
         if primary_intent not in handlers:
             primary_intent = "general"
         ans = handlers[primary_intent](project_id, project, citations)
