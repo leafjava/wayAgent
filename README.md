@@ -91,16 +91,80 @@ npm run check        # 编译检查 + 单元测试
 
 ## 部署到 Monad Testnet（真链）
 
+### 1. 安装全部真链依赖
+
 ```powershell
-$env:PRIVATE_KEY = "0x..."
-$env:MONAD_RPC = "https://testnet-rpc.monad.xyz"
-$env:MONAD_CHAIN_ID = "10143"
-$env:TOKENTRUTH_CHAIN_MODE = "live"
-pip install py-solc-x web3 eth-account requests
-npm run chain:deploy
-$env:DISCLOSURE_REGISTRY_ADDRESS = "0x..."
-npm run dev
+# 在 venv 或本地 Python 环境中
+pip install -r requirements.txt
+pip install py-solc-x==1.2.1     # 编译 Solidity 合约（deploy.py 用）
 ```
+
+依赖一览：
+
+| 包 | 用途 | 必需 |
+|---|---|---|
+| flask | Web 框架 | ✅ |
+| web3>=7.0.0 | Monad 链交互 | ✅（Vercel 也需要） |
+| eth-account>=0.13.0 | 交易签名 | ✅（真链 + 链交互） |
+| python-dotenv | 读 .env | ✅ |
+| requests | DeepSeek API | ✅（开了 LLM 才用） |
+| py-solc-x | 编译合约 | ⚠ 仅 `npm run chain:deploy` |
+
+### 2. 配置 .env
+
+```ini
+# 链模式：live（真链）
+TOKENTRUTH_CHAIN_MODE=live
+
+# Monad Testnet RPC
+MONAD_RPC=https://testnet-rpc.monad.xyz
+MONAD_CHAIN_ID=10143
+MONAD_EXPLORER=https://testnet.monadexplorer.com
+
+# 部署者私钥（64 位 hex，不要带 0x；从测试网钱包导出）
+PRIVATE_KEY=your_private_key_here
+
+# DeepSeek（可选）
+DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+DEEPSEEK_MODEL=deepseek-chat
+
+# Flask
+PORT=4000
+```
+
+### 3. 部署合约
+
+```powershell
+npm run chain:deploy
+# 终端输出：
+#   部署者 0xABC..., balance 5 MON
+#   部署 tx: 0xdef...
+#   DisclosureRegistry deployed: 0xCONTRACT_ADDR (block 12345678)
+#   已写入 .chain_runtime/contract.json
+#   提示：设置环境变量 DISCLOSURE_REGISTRY_ADDRESS=0xCONTRACT_ADDR
+```
+
+### 4. 填入合约地址并启动
+
+```powershell
+$env:DISCLOSURE_REGISTRY_ADDRESS = "0xCONTRACT_ADDR"
+npm run dev    # 或 npm run dev:chain-deploy-with-address
+```
+
+启动后访问 `http://127.0.0.1:4000`，所有 `/api/*` 写入都走真链。
+
+### 5. Vercel 部署（演示用）
+
+Vercel 不用真链（filesystem 只读、不能签名）：
+- `TOKENTRUTH_CHAIN_MODE=mock`
+- 其他环境变量按需（`DEEPSEEK_API_KEY` 可选）
+- 重启时数据重新 seed（无持久化）
+- 适合作为"线上可访问 demo URL"
+
+### 依赖版本冲突解决
+
+之前 `web3==6.15.1` 与 `eth-account==0.13.3` 因 `hexbytes` 版本冲突（web3 要 `<0.4.0`，eth-account 要 `>=1.2.0`）。现在统一升到 `web3>=7.0.0` + `eth-account>=0.13.0`，两者都依赖 `hexbytes>=1.0`，互不冲突。
 
 ## 目录结构
 

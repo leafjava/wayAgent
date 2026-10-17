@@ -1,6 +1,9 @@
 flask==3.0.3
 jinja2==3.1.3
-web3==6.15.1
-eth-account==0.13.3
+web3>=7.0.0
+eth-account>=0.13.0
 requests==2.32.3
 python-dotenv==1.0.1
+# py-solc-x 仅真链部署编译合约时需要（npm run chain:deploy）：
+#   pip install py-solc-x==1.2.1
+# Vercel serverless 和 mock 模式不需要它。
