@@ -1,0 +1,34 @@
+{
+  "app": {
+    "default_language": "zh-CN",
+    "supported_languages": ["zh-CN", "en-US"],
+    "default_chain_mode": "mock"
+  },
+  "chain": {
+    "rpc": "https://testnet-rpc.monad.xyz",
+    "chain_id": 10143,
+    "explorer": "https://testnet.monadexplorer.com"
+  },
+  "qa": {
+    "top_citations": 5,
+    "intents": [
+      "revenue",
+      "token_rights",
+      "transfer_restriction",
+      "unlock_schedule",
+      "risk",
+      "team",
+      "price",
+      "use_of_funds",
+      "competitor",
+      "update",
+      "community"
+    ]
+  },
+  "risk": {
+    "thresholds": {
+      "healthy": 70,
+      "needs_review": 50
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}跟踪与执行 · TokenTruth{% endblock %}
+
+{% block content %}
+<section class="max-w-7xl mx-auto px-4 py-6">
+  <h1 class="text-2xl font-bold text-slate-100">跟踪与执行</h1>
+  <p class="text-slate-400 text-sm">辅助制定投资计划，跟踪价格和公司动态；用户授权后对接平台执行。</p>
+
+  <div class="mt-6 grid md:grid-cols-2 gap-4">
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
+      <h3 class="text-sm font-semibold text-slate-100"><i class="fa fa-bookmark text-amber-300"></i> 关注列表</h3>
+      <div class="mt-3 flex gap-2">
+        <input id="projectIdInput" placeholder="projectId (e.g. demo-mon)" class="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100">
+        <button id="addBtn" class="px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-white text-sm">加入关注</button>
+      </div>
+      <ul id="watchList" class="mt-3 text-xs text-slate-400 space-y-1"></ul>
+    </div>
+
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
+      <h3 class="text-sm font-semibold text-slate-100"><i class="fa fa-paper-plane text-indigo-300"></i> 投资计划</h3>
+      <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <input id="planProjectId" placeholder="projectId" class="col-span-2 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-slate-100">
+        <input id="planBudget" placeholder="预算" class="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-slate-100">
+        <select id="planRisk" class="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-slate-100">
+          <option value="conservative">保守</option><option value="balanced" selected>平衡</option><option value="aggressive">激进</option>
+        </select>
+        <select id="planFreq" class="col-span-2 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-slate-100">
+          <option value="daily">每日跟踪</option><option value="weekly" selected>每周跟踪</option><option value="on_event">事件触发</option>
+        </select>
+        <textarea id="planNotes" placeholder="备注" class="col-span-2 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-slate-100" rows="2"></textarea>
+      </div>
+      <button id="savePlanBtn" class="mt-2 px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm">保存计划</button>
+    </div>
+  </div>
+
+  <div class="mt-6 bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
+    <h3 class="text-sm font-semibold text-slate-100"><i class="fa fa-handshake text-emerald-300"></i> 用户授权执行</h3>
+    <p class="text-xs text-slate-500 mt-1">TokenTruth 不会自动下单。每次执行都需要你的明确授权；执行记录会写上链。</p>
+    <div class="mt-3 grid grid-cols-4 gap-2 text-xs">
+      <input id="execProjectId" placeholder="projectId" class="col-span-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-slate-100">
+      <select id="execPlatform" class="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-slate-100">
+        {% for p in platforms %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+      </select>
+      <select id="execAction" class="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-slate-100">
+        <option>buy</option><option>sell</option><option>subscribe</option><option>swap</option>
+      </select>
+      <button id="execBtn" class="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white">授权并跳转</button>
+    </div>
+    <ul id="consentList" class="mt-3 text-xs text-slate-400 space-y-1"></ul>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/track.js"></script>
+{% endblock %}

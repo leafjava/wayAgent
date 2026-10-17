@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b0f14">
+  <title>{% block title %}TokenTruth · 让投资者问得明白{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/static/design-system.css">
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="bg-[#0b0f14] text-slate-200 antialiased">
+  <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 h-14 flex items-center gap-6">
+      <a href="/" class="flex items-center gap-2 font-bold text-slate-100">
+        <span class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gradient-to-br from-indigo-500 to-purple-500 text-white">
+          <i class="fa fa-search"></i>
+        </span>
+        TokenTruth
+      </a>
+      <nav class="hidden md:flex items-center gap-4 text-sm text-slate-400">
+        <a href="/" class="hover:text-slate-100">项目目录</a>
+        <a href="/chat" class="hover:text-slate-100">问得明白</a>
+        <a href="/analyze" class="hover:text-slate-100">帮我分析</a>
+        <a href="/track" class="hover:text-slate-100">跟踪执行</a>
+        <a href="/company" class="hover:text-slate-100">项目方后台</a>
+        <a href="/proof" class="hover:text-slate-100">链上存证</a>
+      </nav>
+      <div class="ml-auto flex items-center gap-3 text-xs">
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-indigo-900/30 text-indigo-300 border border-indigo-800/40">
+          <i class="fa fa-circle text-[8px]"></i> {{ mode }}
+        </span>
+        <a href="?lang={{ 'en-US' if lang == 'zh-CN' else 'zh-CN' }}" class="text-slate-500 hover:text-slate-300">{{ 'EN' if lang == 'zh-CN' else '中' }}</a>
+      </div>
+    </div>
+  </header>
+
+  <main>{% block content %}{% endblock %}</main>
+
+  <footer class="border-t border-slate-800 mt-16 py-6 text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center gap-2 justify-between">
+      <p>TokenTruth · 让投资者问得明白，让项目方讲得清楚 · 信息理解、证据追踪、风险解释、链上存证</p>
+      <p class="font-mono">contract={{ contract_address }}</p>
+    </div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

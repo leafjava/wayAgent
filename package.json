@@ -1,0 +1,15 @@
+{
+  "name": "tokentruth-harness",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TokenTruth · harness for AI knowledge base + investor Q&A + on-chain attestation",
+  "scripts": {
+    "install": "node tools/harness.mjs install",
+    "dev": "node tools/harness.mjs dev",
+    "test": "node tools/harness.mjs test",
+    "check": "node tools/harness.mjs check",
+    "demo": "node tools/harness.mjs demo",
+    "chain:deploy": "python scripts/deploy.py",
+    "chain:seed": "python scripts/seed_projects.py"
+  }
+}

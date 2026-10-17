@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}链上存证查询 · TokenTruth{% endblock %}
+
+{% block content %}
+<section class="max-w-4xl mx-auto px-4 py-8">
+  <h1 class="text-2xl font-bold text-slate-100">链上存证查询</h1>
+  <p class="text-slate-400 text-sm">输入 <code class="text-indigo-300">evidenceHash</code> 验证存证、查看 Monad 浏览器跳转。</p>
+
+  <form id="proofForm" class="mt-4 flex gap-2">
+    <input id="hashInput" type="text" value="{{ evidence_hash }}" placeholder="0x..." class="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    <button class="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm">查询</button>
+  </form>
+
+  <div id="proofResult" class="mt-6"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function lookup(hash) {
+  const result = document.getElementById('proofResult');
+  result.innerHTML = `<div class="text-slate-400 text-sm">查询 ${hash.slice(0,18)}…</div>`;
+  try {
+    const r = await fetch(`/api/proof/${hash}`);
+    const d = await r.json();
+    if (!d.onChain || !d.onChain.exists) {
+      result.innerHTML = `<div class="bg-rose-900/20 border border-rose-800/50 rounded-xl p-4 text-rose-300 text-sm">链上未找到此 evidenceHash。</div>`;
+      return;
+    }
+    const rec = d.onChain.record;
+    const typeLabel = ["项目披露","研究报告","风险状态变更","投资者问答","项目方内容","用户授权"][rec.evidenceType] || '其他';
+    const exp = `{{ contract_address[:14] }}`.length > 5 ? `{{ contract_address }}/tx/${rec.evidenceHash}` : '';
+    result.innerHTML = `
+      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-4">
+        <div class="flex items-center gap-3">
+          <span class="px-2 py-1 rounded text-xs bg-indigo-900/30 text-indigo-300 border border-indigo-800/40">${typeLabel}</span>
+          <h2 class="text-slate-100 font-bold">${rec.projectId} · ${rec.docVersion || '-'}</h2>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4 text-sm">
+          <div><div class="text-slate-500 text-xs">evidenceId</div><div class="hash-text">${rec.evidenceId}</div></div>
+          <div><div class="text-slate-500 text-xs">evidenceHash</div><div class="hash-text">${rec.evidenceHash}</div></div>
+          <div><div class="text-slate-500 text-xs">timestamp</div><div class="text-slate-200">${new Date(rec.timestamp*1000).toLocaleString()}</div></div>
+          <div><div class="text-slate-500 text-xs">blockNumber</div><div class="text-slate-200">${rec.blockNumber}</div></div>
+          <div><div class="text-slate-500 text-xs">fromStatus</div><div class="hash-text">${rec.fromStatus}</div></div>
+          <div><div class="text-slate-500 text-xs">toStatus</div><div class="hash-text">${rec.toStatus}</div></div>
+          <div class="col-span-2"><div class="text-slate-500 text-xs">recorder</div><div class="hash-text">${rec.recorder}</div></div>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    result.innerHTML = `<div class="text-rose-400 text-sm">查询失败：${e}</div>`;
+  }
+}
+document.getElementById('proofForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const v = document.getElementById('hashInput').value.trim();
+  if (v) lookup(v);
+});
+const initial = document.getElementById('hashInput').value.trim();
+if (initial) lookup(initial);
+</script>
+{% endblock %}

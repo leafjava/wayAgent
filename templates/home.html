@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}TokenTruth · 项目目录{% endblock %}
+
+{% block content %}
+<section class="max-w-7xl mx-auto px-4 py-12">
+  <div class="text-center max-w-3xl mx-auto">
+    <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-indigo-900/30 text-indigo-300 border border-indigo-800/40">
+      <i class="fa fa-shield"></i> Monad Testnet · 可验证的 AI 知识库
+    </span>
+    <h1 class="mt-4 text-4xl md:text-5xl font-extrabold leading-tight text-slate-50">
+      让投资者<span class="text-indigo-400">问得明白</span>，<br>让项目方<span class="text-purple-400">讲得清楚</span>
+    </h1>
+    <p class="mt-4 text-slate-400">基于可验证 AI 知识库的代币尽调与沟通平台。每一份回答、每一次披露、每一次风险变化都有时间戳、版本号和链上哈希。</p>
+  </div>
+
+  <div class="mt-12">
+    <h2 class="text-2xl font-bold text-slate-100 mb-6">4 大功能模块</h2>
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <a href="/chat" class="block bg-gradient-to-br from-indigo-900/40 to-slate-900/70 border border-indigo-800/40 rounded-2xl p-5 hover:border-indigo-500 transition">
+        <div class="text-2xl">💬</div>
+        <h3 class="text-slate-100 font-semibold mt-3">问得明白</h3>
+        <p class="text-slate-400 text-xs mt-2">AI 知识库 + 自然语言问答：靠什么赚钱？代币有什么权利？什么时候可以转让？</p>
+      </a>
+      <a href="/analyze" class="block bg-gradient-to-br from-purple-900/40 to-slate-900/70 border border-purple-800/40 rounded-2xl p-5 hover:border-purple-500 transition">
+        <div class="text-2xl">📊</div>
+        <h3 class="text-slate-100 font-semibold mt-3">帮我分析</h3>
+        <p class="text-slate-400 text-xs mt-2">整理公司基本面、新闻、市场数据、社区信息，解释变化和风险。</p>
+      </a>
+      <a href="/track" class="block bg-gradient-to-br from-amber-900/40 to-slate-900/70 border border-amber-800/40 rounded-2xl p-5 hover:border-amber-500 transition">
+        <div class="text-2xl">📈</div>
+        <h3 class="text-slate-100 font-semibold mt-3">跟踪执行</h3>
+        <p class="text-slate-400 text-xs mt-2">辅助投资计划，跟踪价格与公司动态；用户授权后对接平台执行。</p>
+      </a>
+      <a href="/company" class="block bg-gradient-to-br from-emerald-900/40 to-slate-900/70 border border-emerald-800/40 rounded-2xl p-5 hover:border-emerald-500 transition">
+        <div class="text-2xl">📢</div>
+        <h3 class="text-slate-100 font-semibold mt-3">项目方后台</h3>
+        <p class="text-slate-400 text-xs mt-2">辅助生成介绍材料、视频脚本、新闻内容；更新资料；回答用户问题。</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="mt-12">
+    <h2 class="text-2xl font-bold text-slate-100 mb-6">项目目录</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      {% for p in projects %}
+      <a href="/project/{{ p.projectId }}" class="block bg-slate-900/70 border border-slate-800 rounded-2xl p-5 hover:border-indigo-500 transition">
+        <div class="flex items-start justify-between">
+          <div>
+            <h3 class="text-slate-100 font-bold text-lg">{{ p.name }}</h3>
+            <p class="text-slate-500 text-xs mt-1">${{ p.symbol }} · {{ p.sector }}</p>
+          </div>
+          <span class="text-xs text-slate-500 font-mono">{{ p.projectId }}</span>
+        </div>
+        <p class="text-slate-400 text-sm mt-3 line-clamp-2">{{ p.description }}</p>
+      </a>
+      {% else %}
+      <div class="col-span-2 text-slate-500 text-sm">暂无项目。访问 <a href="/api/seed" class="text-indigo-300">/api/seed</a> 灌入 demo 数据。</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

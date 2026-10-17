@@ -1,0 +1,99 @@
+{
+  "projects": [
+    {
+      "projectId": "demo-mon",
+      "name": "DemoChain",
+      "symbol": "DEMO",
+      "sector": "L1 公链",
+      "description": "DemoChain 是面向高并发场景的 EVM 兼容 Layer 1，强调并行执行与高 TPS。代币用于支付 Gas、参与治理、抵押验证。",
+      "website": "https://example.invalid",
+      "whitepaper": "https://example.invalid/whitepaper.pdf"
+    }
+  ],
+  "documents": [
+    {
+      "projectId": "demo-mon",
+      "docType": "whitepaper",
+      "title": "DemoChain 白皮书 v1",
+      "content": "## 1. 项目概述\n\nDemoChain 是面向高并发场景的 EVM 兼容 Layer 1。团队由前 Solana 与 Polygon 工程师组成，2023 年成立，2024 年完成 2500 万美元 A 轮融资。\n\n## 2. 商业模式\n\n主要收入来源：\n- 链上 Gas 费（DEMO 计价）\n- 企业级 RPC 服务订阅\n- 跨链桥手续费\n\n## 3. 代币经济\n\nDEMO 总供应量 100 亿，分布：\n- 生态激励 35%\n- 团队 20%（4 年线性释放，1 年 cliff）\n- 投资人 18%（2 年线性释放，6 个月 cliff）\n- 基金会 15%\n- 流动性 12%\n\n## 4. 团队\n\n- CEO Alex Chen（前 Polygon 工程总监）\n- CTO Maya Liu（前 Solana 核心开发）\n- 首席科学家 Wei Zhang（MIT 计算机博士）\n\n## 5. 用例\n\n- DeFi 应用\n- GameFi 链上状态\n- 企业级资产上链\n",
+      "source": "internal",
+      "sourceUrl": "https://example.invalid/whitepaper.pdf",
+      "trustLevel": "official"
+    },
+    {
+      "projectId": "demo-mon",
+      "docType": "tokenomics",
+      "title": "代币权利与转让限制",
+      "content": "## 代币权利\n\nDEMO 持有人享有以下权利：\n- 治理投票：1 DEMO = 1 票（不包含锁仓部分）\n- Gas 费折扣：持有 ≥ 1000 DEMO 享 10% 折扣\n- 验证者抵押：成为验证者需抵押 ≥ 10000 DEMO\n- 销毁分红：每季度净收入的 20% 用于销毁\n\n## 转让限制\n\n- 团队与投资人代币在 cliff 期内不可转让\n- 锁仓期通过智能合约强制执行，转账触发自动 revert\n- 二级市场流通量受 cliff 与线性释放影响\n\n## 风险\n\n- 早期解锁可能造成抛压\n- 治理攻击面随流通量上升而扩大\n",
+      "source": "internal",
+      "sourceUrl": "https://example.invalid/tokenomics.md",
+      "trustLevel": "official"
+    },
+    {
+      "projectId": "demo-mon",
+      "docType": "unlock",
+      "title": "代币解锁计划 v1",
+      "content": "## 解锁时间表\n\n### 2026 Q1（未来 3 个月）\n- 团队第一期释放 5%（5000 万 DEMO）\n- 投资人第二期释放 3%（3000 万 DEMO）\n- 生态激励池释放 8%（2.8 亿 DEMO）\n\n### 2026 Q2\n- 团队第二期 5%\n- 投资人第三期 3%\n- 生态激励 8%\n\n### 2026 Q3\n- 团队第三期 5%\n- 投资人第四期 3%\n- 生态激励 8%\n\n总计未来 3 个月预计新增流通量约 3.6 亿 DEMO（占总供应量 3.6%）。\n",
+      "source": "internal",
+      "sourceUrl": "https://example.invalid/unlock.md",
+      "trustLevel": "official"
+    },
+    {
+      "projectId": "demo-mon",
+      "docType": "announcement",
+      "title": "DemoChain 主网上线公告",
+      "content": "DemoChain 团队宣布主网将于 2026 年第一季度正式上线，初期支持 EVM 兼容智能合约、并行执行、亚秒级最终性。\n\n团队表示，将提供 5% 的代币用于空投与生态激励，详情见后续公告。\n",
+      "source": "official blog",
+      "sourceUrl": "https://example.invalid/announcement-001",
+      "trustLevel": "official"
+    },
+    {
+      "projectId": "demo-mon",
+      "docType": "news",
+      "title": "DemoChain 与某 Web3 钱包达成合作",
+      "content": "据加密媒体报道，DemoChain 团队宣布与某主流 Web3 钱包达成合作，钱包将原生支持 DEMO 代币转账与质押。\n\n合作细节未披露，但消息人士透露，合作可能涉及代币激励。\n",
+      "source": "示例加密媒体",
+      "sourceUrl": "https://example.invalid/news-001",
+      "trustLevel": "news"
+    },
+    {
+      "projectId": "demo-mon",
+      "docType": "community",
+      "title": "社区热门讨论：主网时间表",
+      "content": "Twitter 与 Discord 社区近期热议主网上线时间，团队核心开发者回复称代码审计已完成 80%，预计 3 月份完成。\n\n社区情绪整体偏积极，少数投资者关注早期解锁对价格的潜在影响。\n",
+      "source": "示例社交平台",
+      "sourceUrl": "https://example.invalid/community-001",
+      "trustLevel": "community"
+    }
+  ],
+  "versions": [
+    {
+      "versionId": "v-wp-1",
+      "projectId": "demo-mon",
+      "docType": "whitepaper",
+      "version": "v1.0",
+      "contentHash": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "content": "## DemoChain 白皮书 v1.0\n\n## 1. 项目概述\n\nDemoChain 是面向高并发场景的 EVM 兼容 Layer 1。\n\n## 2. 商业模式\n\n主要收入来源：\n- 链上 Gas 费（DEMO 计价）\n- 企业级 RPC 服务订阅\n- 跨链桥手续费\n\n## 3. 代币经济\n\nDEMO 总供应量 100 亿，分布：\n- 生态激励 35%\n- 团队 20%（4 年线性释放，1 年 cliff）\n- 投资人 18%（2 年线性释放，6 个月 cliff）\n- 基金会 15%\n- 流动性 12%\n\n## 4. 团队\n\n- CEO Alex Chen\n- CTO Maya Liu\n\n",
+      "parentVersion": null,
+      "changes": {
+        "revenue": "链上 Gas + RPC 订阅 + 跨链桥手续费",
+        "team": "Alex Chen, Maya Liu",
+        "totalSupply": "10,000,000,000"
+      }
+    },
+    {
+      "versionId": "v-wp-2",
+      "projectId": "demo-mon",
+      "docType": "whitepaper",
+      "version": "v1.1",
+      "contentHash": "0x0000000000000000000000000000000000000000000000000000000000000002",
+      "content": "## DemoChain 白皮书 v1.1\n\n## 1. 项目概述\n\nDemoChain 是面向高并发场景的 EVM 兼容 Layer 1，强调并行执行与高 TPS。\n\n## 2. 商业模式\n\n主要收入来源：\n- 链上 Gas 费（DEMO 计价）\n- 企业级 RPC 服务订阅\n- 跨链桥手续费\n- MEV 拍卖收入（新增）\n\n## 3. 代币经济\n\nDEMO 总供应量 100 亿，分布：\n- 生态激励 35%\n- 团队 20%（4 年线性释放，1 年 cliff）\n- 投资人 18%（2 年线性释放，6 个月 cliff）\n- 基金会 15%\n- 流动性 12%\n\n## 4. 团队\n\n- CEO Alex Chen（前 Polygon 工程总监）\n- CTO Maya Liu（前 Solana 核心开发）\n- 首席科学家 Wei Zhang（MIT 计算机博士）\n\n",
+      "parentVersion": "v-wp-1",
+      "changes": {
+        "revenue": "链上 Gas + RPC 订阅 + 跨链桥手续费 + MEV 拍卖（新增）",
+        "team": "Alex Chen, Maya Liu, Wei Zhang (新增)",
+        "totalSupply": "10,000,000,000"
+      }
+    }
+  ]
+}

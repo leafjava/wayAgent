@@ -1,0 +1,29 @@
+# Logs
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Data
+data/runtime/
+.pose_runtime/
+.chain_runtime/
+.env
+uploads/
+static/results/
+
+# Editor
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Solidity
+node_modules/
+artifacts/
+cache/

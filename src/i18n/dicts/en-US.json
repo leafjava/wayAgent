@@ -1,0 +1,23 @@
+{
+  "nav": {
+    "home": "Home",
+    "chat": "Ask Clear",
+    "analyze": "Analyze",
+    "track": "Track & Act",
+    "company": "Issuer Console",
+    "proof": "On-chain Proof"
+  },
+  "home": {
+    "title": "Make investors ask clearly. Make issuers explain clearly.",
+    "subtitle": "Verifiable AI knowledge base for token due diligence & issuer comms",
+    "scenarios": "4 modules",
+    "askClear": "AI Knowledge + Q&A",
+    "askClearDesc": "Ask in natural language: how does it make money? what rights? transferability?",
+    "analyze": "Fundamentals + market + community",
+    "analyzeDesc": "Aggregate fundamentals, news, market data, community, explain change & risk",
+    "track": "Price tracking + authorized execution",
+    "trackDesc": "Plan, watch prices, dispatch to platforms with user consent",
+    "company": "Issuer ongoing comms",
+    "companyDesc": "Pitch deck, video script, news drafts, FAQ; auto-reply investors"
+  }
+}

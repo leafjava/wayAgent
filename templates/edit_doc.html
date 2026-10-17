@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}编辑资料 · TokenTruth{% endblock %}
+
+{% block content %}
+<section class="max-w-4xl mx-auto px-4 py-6">
+  <h1 class="text-2xl font-bold text-slate-100">编辑资料 <span class="text-slate-500 text-base">→ 新版本上链</span></h1>
+  <p class="text-slate-400 text-sm">修改后系统会自动与上一版本对比、生成新版本哈希、写入 Monad。</p>
+
+  <div class="mt-4 flex items-center gap-3 text-xs">
+    <select id="projectSelect" class="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-slate-200">
+      {% for p in projects %}<option value="{{ p.projectId }}" {% if p.projectId == project_id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+    </select>
+    <select id="docTypeSelect" class="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-slate-200">
+      <option value="whitepaper" {% if doc_type == 'whitepaper' %}selected{% endif %}>白皮书</option>
+      <option value="tokenomics" {% if doc_type == 'tokenomics' %}selected{% endif %}>代币经济</option>
+      <option value="unlock" {% if doc_type == 'unlock' %}selected{% endif %}>解锁计划</option>
+      <option value="announcement" {% if doc_type == 'announcement' %}selected{% endif %}>公告</option>
+    </select>
+  </div>
+
+  <div class="mt-4">
+    <textarea id="contentArea" rows="14" placeholder="在此粘贴或撰写新版本内容..." class="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 text-sm text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+  </div>
+
+  <div class="mt-3 flex gap-2">
+    <button id="loadLatestBtn" class="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm">加载上一版本</button>
+    <button id="submitBtn" class="px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm">保存新版本并上链</button>
+  </div>
+
+  <div id="result" class="mt-4 text-xs text-slate-400"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const params = new URLSearchParams(location.search);
+  document.getElementById('projectSelect').addEventListener('change', e => {
+    const url = new URL(location.href);
+    url.searchParams.set('projectId', e.target.value);
+    location.href = url.toString();
+  });
+  document.getElementById('docTypeSelect').addEventListener('change', e => {
+    const url = new URL(location.href);
+    url.searchParams.set('docType', e.target.value);
+    location.href = url.toString();
+  });
+
+  async function loadLatest() {
+    const projectId = document.getElementById('projectSelect').value;
+    const docType = document.getElementById('docTypeSelect').value;
+    const r = await fetch(`/api/version/list?projectId=${projectId}&docType=${docType}`);
+    const d = await r.json();
+    if (d.versions && d.versions[0]) {
+      document.getElementById('contentArea').value = d.versions[0].content;
+    } else {
+      document.getElementById('contentArea').value = '';
+      document.getElementById('contentArea').placeholder = '尚未找到历史版本，可以开始撰写新内容...';
+    }
+  }
+  document.getElementById('loadLatestBtn').addEventListener('click', loadLatest);
+  loadLatest();
+
+  document.getElementById('submitBtn').addEventListener('click', async () => {
+    const projectId = document.getElementById('projectSelect').value;
+    const docType = document.getElementById('docTypeSelect').value;
+    const content = document.getElementById('contentArea').value;
+    if (!content.trim()) { alert('内容不能为空'); return; }
+    const r = await fetch('/api/version', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ projectId, docType, content, changes: {} })
+    });
+    const d = await r.json();
+    const oc = d.onChain || {};
+    document.getElementById('result').innerHTML = `
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="text-emerald-300 font-semibold">✓ 新版本已保存并上链</div>
+        <div class="mt-2 font-mono text-slate-500 text-[10px] break-all">version: ${d.version}</div>
+        <div class="font-mono text-slate-500 text-[10px] break-all">hash: ${d.contentHash}</div>
+        <div class="font-mono text-slate-500 text-[10px] break-all">tx: ${oc.txHash || '-'}</div>
+        <a href="/proof?hash=${d.contentHash}" class="mt-2 inline-block text-indigo-300 hover:underline">→ 在链上验证</a>
+        ${d.diff ? `<details class="mt-3 text-slate-500"><summary class="cursor-pointer">查看 diff（+${d.diff.addedLines} -${d.diff.removedLines}）</summary><pre class="mt-2 text-[10px] whitespace-pre-wrap">${d.diff.unifiedDiff || ''}</pre></details>` : ''}
+      </div>
+    `;
+    loadLatest();
+  });
+</script>
+{% endblock %}
