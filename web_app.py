@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import sys
+import tempfile
 import time
 import uuid
 from datetime import datetime, timezone
@@ -47,7 +48,13 @@ logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s %(na
 log = logging.getLogger("tokentruth")
 
 CONFIG = load_config(default_config_path())
-DB_PATH = ROOT / "data" / "runtime" / "tokentruth.sqlite3"
+# Vercel bundles the source tree read-only; only /tmp is writable in a
+# serverless invocation. Local development keeps the persistent project path.
+DB_PATH = (
+    Path(tempfile.gettempdir()) / "tokentruth.sqlite3"
+    if os.environ.get("VERCEL")
+    else ROOT / "data" / "runtime" / "tokentruth.sqlite3"
+)
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 STORE = ProjectStore(str(DB_PATH))

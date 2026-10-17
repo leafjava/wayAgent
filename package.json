@@ -4,7 +4,6 @@
   "private": true,
   "description": "TokenTruth · harness for AI knowledge base + investor Q&A + on-chain attestation",
   "scripts": {
-    "install": "node tools/harness.mjs install",
     "dev": "node tools/harness.mjs dev",
     "test": "node tools/harness.mjs test",
     "check": "node tools/harness.mjs check",
